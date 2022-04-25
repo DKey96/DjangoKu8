@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-k8s-web-deployment # Name I can give (up to me)
+spec:
+  replicas: 3 # This gives us how many of pods we want to deploy
+  selector:
+    matchLabels:
+      app: django-k8s-web-deployment
+  template:
+    metadata:
+      labels:
+        app: django-k8s-web-deployment
+    spec:
+      imagePullSecrets:
+        - name: regcred
+        - name: okteto-regcred
+      containers: # Specifies containers as in Docker
+        - name: django-k8s-web
+          image: registry.cloud.okteto.net/dkey96/django-k8s-web:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          envFrom:
+            - secretRef:
+                name: django-k8s-web-prod-env
+          env:
+            - name: PORT
+              value: "8001"
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+
+--- 
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-k8s-web-service
+spec:
+  type: LoadBalancer # distributes trafics between deployments/pods
+  selector:
+    app: django-k8s-web-deployment
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80 # for actual domain so we dont care about putting port inside url
+      targetPort: 8001
